@@ -1,0 +1,87 @@
+{
+  "name": "@affic/sdk",
+  "version": "0.1.0",
+  "description": "Official Node.js SDK for the Affic integration API",
+  "keywords": [
+    "affic",
+    "affiliate",
+    "affiliate-marketing",
+    "sdk",
+    "api-client",
+    "typescript",
+    "node"
+  ],
+  "homepage": "https://github.com/affic-com-br/affic-node#readme",
+  "bugs": {
+    "url": "https://github.com/affic-com-br/affic-node/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/affic-com-br/affic-node.git"
+  },
+  "license": "MIT",
+  "author": "Affic <contato@affic.com.br> (https://affic.com.br)",
+  "type": "module",
+  "sideEffects": false,
+  "browser": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:smoke": "bash scripts/smoke-test.sh",
+    "check:package": "npm run build && publint && attw --pack .",
+    "changeset": "changeset",
+    "version:packages": "changeset version",
+    "release": "npm run build && changeset publish",
+    "prepack": "npm run clean && npm run build"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "@changesets/cli": "^2.29.7",
+    "@eslint/js": "^9.37.0",
+    "@types/node": "^22.15.3",
+    "@vitest/coverage-v8": "^3.2.4",
+    "eslint": "^9.37.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
+    "publint": "^0.3.14",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^3.2.4"
+  }
+}

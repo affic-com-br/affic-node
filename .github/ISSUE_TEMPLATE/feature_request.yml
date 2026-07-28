@@ -1,0 +1,23 @@
+name: Feature request
+description: Propose a capability the SDK does not have yet.
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that the SDK makes hard or impossible?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API
+      description: Sketch how it would look at the call site.
+      render: ts
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered

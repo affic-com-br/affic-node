@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege by default; jobs opt into more if they need it.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint and format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  test:
+    name: Test on Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22', '24']
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:coverage
+      - name: Upload coverage
+        if: matrix.node == '22'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # Validates the published shape: exports map, types resolution under every module system,
+      # and that a real consumer can install the tarball and use it from ESM and CJS.
+      - run: npx publint
+      - run: npx attw --pack .
+      - run: npm run test:smoke
+      # The SDK ships zero runtime dependencies; anything reported here would reach consumers.
+      - run: npm audit --omit=dev --audit-level=high
+
+  changeset:
+    name: Changeset present
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Fails when a PR changes the package but declares no version bump, so nothing ships
+      # without a changelog entry. Docs-only PRs pass.
+      - run: npx changeset status --since=origin/${{ github.base_ref }}

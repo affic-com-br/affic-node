@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Account, billing, or integration configuration
+    url: https://affic.com.br
+    about: Questions about your program, metrics, or tokens are handled in the company area.
+  - name: Security vulnerability
+    url: https://github.com/affic-com-br/affic-node/security/advisories/new
+    about: Report privately. Never open a public issue for a vulnerability.

@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in the SDK behaves differently from what it documents.
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never paste an API key, an `x-api-key` header, or a full request log that contains one.
+        If you already did somewhere, rotate the token in the company area first.
+
+  - type: input
+    id: version
+    attributes:
+      label: SDK version
+      placeholder: '0.1.0'
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      placeholder: 'v22.11.0'
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Include the error class and message if one was thrown.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: The smallest snippet that shows the problem.
+      render: ts
+    validations:
+      required: true

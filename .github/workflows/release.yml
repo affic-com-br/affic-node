@@ -1,0 +1,64 @@
+name: Release
+
+# Every release starts here. Merging to main either opens/updates the "Version Packages" PR or,
+# when that PR is the thing being merged, publishes to npm and tags the commit.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Version or publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the version commit, push tags, create GitHub releases
+      pull-requests: write # open and update the "Version Packages" PR
+      id-token: write # OIDC, for npm trusted publishing and provenance
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          # Release builds resolve dependencies fresh, never from a cache another workflow
+          # could have poisoned.
+          package-manager-cache: false
+
+      # Trusted publishing (OIDC) needs npm >= 11.5.1, newer than what Node bundles.
+      - run: npm install --global npm@latest
+
+      - run: npm ci
+
+      # The same gates as CI, re-run against the exact commit being published.
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:coverage
+
+      - name: Create version PR or publish
+        id: changesets
+        uses: changesets/action@v2
+        with:
+          version-script: npm run version:packages
+          publish-script: npm run release
+          create-github-releases: true
+          push-git-tags: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          # Only needed while the package uses a granular access token instead of trusted
+          # publishing. Harmless once trusted publishing is configured.
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Report result
+        if: steps.changesets.outputs.published == 'true'
+        run: echo "Published ${{ steps.changesets.outputs.publishedPackages }}"
