@@ -26,21 +26,27 @@ export interface JsonObject {
  */
 export type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
 
-/** Options accepted by the `Affic` constructor. */
+/**
+ * Options accepted by the `Affic` constructor.
+ *
+ * Every option is written `?: T | undefined` rather than `?: T` so that consumers compiling with
+ * `exactOptionalPropertyTypes` can pass a value that may be undefined — such as
+ * `process.env['AFFIC_API_KEY']` — without a cast.
+ */
 export interface ClientOptions {
   /**
    * Integration token sent as the `x-api-key` header.
    *
    * Defaults to `process.env.AFFIC_API_KEY`. The token is secret: keep it server-side.
    */
-  apiKey?: string;
+  apiKey?: string | undefined;
 
   /**
    * Origin of the API.
    *
    * @defaultValue `'https://server.affic.com.br'`
    */
-  baseURL?: string;
+  baseURL?: string | undefined;
 
   /**
    * Milliseconds a request may take before the SDK aborts it and throws
@@ -48,30 +54,30 @@ export interface ClientOptions {
    *
    * @defaultValue `60000`
    */
-  timeout?: number;
+  timeout?: number | undefined;
 
   /**
    * `fetch` implementation to use.
    *
    * @defaultValue the global `fetch`
    */
-  fetch?: FetchLike;
+  fetch?: FetchLike | undefined;
 
   /**
    * Headers added to every request. Header names are lower-cased; values set here override the
    * SDK's own headers, so use with care.
    */
-  defaultHeaders?: Readonly<Record<string, string>>;
+  defaultHeaders?: Readonly<Record<string, string>> | undefined;
 }
 
 /** Per-call overrides. */
 export interface RequestOptions {
   /** Aborts the request. Composed with the configured timeout. */
-  signal?: AbortSignal;
+  signal?: AbortSignal | undefined;
 
   /** Overrides {@link ClientOptions.timeout} for this call only. */
-  timeout?: number;
+  timeout?: number | undefined;
 
   /** Headers merged over {@link ClientOptions.defaultHeaders} for this call only. */
-  headers?: Readonly<Record<string, string>>;
+  headers?: Readonly<Record<string, string>> | undefined;
 }

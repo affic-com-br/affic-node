@@ -23,7 +23,7 @@ export interface ActivityCreateParams {
    * Drives `PERCENTAGE` commission rules; a `PERCENTAGE` metric with no value yields a commission
    * of `0`. Ignored by `FIXED` rules, which always pay the configured amount.
    */
-  value?: number;
+  value?: number | undefined;
 
   /**
    * Affiliate account credited for this activity, as the UUID shown in the affiliate area.
@@ -32,7 +32,7 @@ export interface ActivityCreateParams {
    * program, but no affiliate is credited. An id matching no account behaves like `null` rather
    * than failing.
    */
-  affiliateAccountId?: string | null;
+  affiliateAccountId?: string | null | undefined;
 }
 
 /**

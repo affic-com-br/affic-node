@@ -44,6 +44,15 @@ describe('public types', () => {
     expectTypeOf<ClientOptions['timeout']>().toEqualTypeOf<number | undefined>();
   });
 
+  it('accepts an API key read straight from the environment', () => {
+    // `process.env[…]` is `string | undefined`. Under `exactOptionalPropertyTypes` that is only
+    // assignable because the options are declared `?: T | undefined`. This is the documented
+    // call, so it must keep compiling.
+    const client = new Affic({ apiKey: process.env['AFFIC_API_KEY'] });
+
+    expectTypeOf(client).toEqualTypeOf<Affic>();
+  });
+
   it('takes an abort signal per request', () => {
     expectTypeOf<RequestOptions['signal']>().toEqualTypeOf<AbortSignal | undefined>();
   });

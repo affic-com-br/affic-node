@@ -45,6 +45,14 @@ export default defineConfig(
   },
 
   {
+    // Examples are documentation that compiles: printing to stdout is the point.
+    files: ['examples/**/*.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+
+  {
     files: ['tests/**/*.ts'],
     rules: {
       // Tests legitimately build malformed payloads and partial doubles.

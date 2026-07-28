@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    // The examples import `@affic/sdk` exactly as a consumer would, but resolve to the local
+    // source so they are typechecked against the current code instead of the published package.
+    "paths": {
+      "@affic/sdk": ["../src/index.ts"]
+    }
+  },
+  "include": ["**/*.ts"]
+}

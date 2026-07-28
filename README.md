@@ -18,6 +18,8 @@ await client.activity.create({
 });
 ```
 
+A runnable version of this snippet lives in [`examples/01-basic.ts`](./examples/01-basic.ts).
+
 ## Requirements
 
 Node.js 20 or newer. The SDK uses the built-in `fetch`, so nothing else is installed.
