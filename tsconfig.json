@@ -24,6 +24,11 @@
     "sourceMap": true,
     "noEmit": true,
     "skipLibCheck": true,
+    // tsup's declaration step injects `baseUrl` on our behalf
+    // (node_modules/tsup/dist/rollup.js: `baseUrl: compilerOptions.baseUrl || "."`), and
+    // TypeScript 6 errors on that deprecation. Nothing here sets `baseUrl`; drop this line once
+    // tsup stops passing it.
+    "ignoreDeprecations": "6.0",
     "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*.ts", "tests/**/*.ts", "tsup.config.ts", "vitest.config.ts"]
