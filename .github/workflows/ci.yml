@@ -94,6 +94,32 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      # Fails when a PR changes the package but declares no version bump, so nothing ships
-      # without a changelog entry. Docs-only PRs pass.
-      - run: npx changeset status --since=origin/${{ github.base_ref }}
+      # Fails when a PR changes what ships to npm but declares no version bump, so nothing
+      # consumers can see is released without a changelog entry.
+      #
+      # The check has to be scoped by hand: this is a single-package repo, so `changeset status`
+      # treats *any* change as package-relevant and would demand a changeset for a README typo.
+      - name: Require a changeset when the published package changes
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          set -euo pipefail
+
+          # The SDK has zero runtime dependencies, so Dependabot only ever touches devDependencies
+          # and workflow pins — never anything a consumer installs.
+          if [ "$PR_AUTHOR" = "dependabot[bot]" ]; then
+            echo "Dependabot PR: no consumer-visible change, no changeset required."
+            exit 0
+          fi
+
+          changed="$(git diff --name-only "origin/$BASE_REF...HEAD" -- src package.json)"
+          if [ -z "$changed" ]; then
+            echo "No published code changed (only docs, CI, tests, or examples)."
+            echo "A changeset is not required."
+            exit 0
+          fi
+
+          echo "These files ship to consumers, so this PR needs a changeset:"
+          echo "$changed"
+          npx changeset status --since="origin/$BASE_REF"
