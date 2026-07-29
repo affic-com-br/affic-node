@@ -6,11 +6,16 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     labels: ['dependencies']
-    # Dev dependencies only — the SDK ships none at runtime — so batching keeps the noise down.
+    # Everything lands in one PR, majors included. Three reasons:
+    #   - Tooling moves in pairs (eslint/@eslint/js, vitest/@vitest/coverage-v8). Split across
+    #     PRs, neither can merge: each half fails CI without the other.
+    #   - One PR means one package-lock.json rewrite. Separate PRs all touch the lockfile, so
+    #     the first to merge leaves the rest conflicted.
+    #   - The SDK ships zero runtime dependencies, so none of this reaches consumers.
     groups:
       dev-dependencies:
         patterns: ['*']
-        update-types: ['minor', 'patch']
+        update-types: ['major', 'minor', 'patch']
     commit-message:
       prefix: 'chore(deps)'
 
@@ -19,5 +24,9 @@ updates:
     schedule:
       interval: weekly
     labels: ['dependencies', 'github-actions']
+    groups:
+      github-actions:
+        patterns: ['*']
+        update-types: ['major', 'minor', 'patch']
     commit-message:
       prefix: 'chore(actions)'
