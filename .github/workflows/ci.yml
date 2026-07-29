@@ -102,9 +102,17 @@ jobs:
       - name: Require a changeset when the published package changes
         env:
           BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           set -euo pipefail
+
+          # The "Version Packages" PR is the release itself: it *consumes* the pending changesets
+          # and bumps package.json. Demanding a changeset from it would deadlock every release.
+          if [ "$HEAD_REF" = "changeset-release/$BASE_REF" ]; then
+            echo "Release PR from changesets: it consumes changesets rather than adding one."
+            exit 0
+          fi
 
           # The SDK has zero runtime dependencies, so Dependabot only ever touches devDependencies
           # and workflow pins — never anything a consumer installs.
