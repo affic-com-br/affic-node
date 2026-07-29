@@ -22,7 +22,7 @@ jobs:
       pull-requests: write # open and update the "Version Packages" PR
       id-token: write # OIDC, for npm trusted publishing and provenance
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
