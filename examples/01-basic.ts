@@ -9,10 +9,13 @@ import { Affic } from '@affic/sdk';
 // With no `apiKey`, the client reads AFFIC_API_KEY from the environment.
 const client = new Affic({ apiKey: process.env['AFFIC_API_KEY'] });
 
+// `trackId` is the `__affic` value your storefront received, kept by the tag in its attribution
+// cookie. Forward it verbatim, or pass null when the sale cannot be attributed.
 await client.activity.create({
   name: 'purchase',
   value: 149.9,
-  affiliateAccountId: '3f1c2a5e-9b47-4d1e-8a10-6c0f2d7b9e34',
+  trackId: 'V1StGXR8_Z5j',
+  data: { orderId: 'A-10293', items: 3 },
 });
 
 console.log('Purchase recorded.');

@@ -30,6 +30,7 @@ describe('public entry point', () => {
       'AfficError',
       'AfficInternalServerError',
       'AfficInvalidArgumentError',
+      'AfficNotFoundError',
       'AfficTimeoutError',
     ]);
   });

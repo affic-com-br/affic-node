@@ -8,6 +8,7 @@ import {
   AfficConnectionError,
   AfficError,
   AfficInternalServerError,
+  AfficNotFoundError,
   AfficTimeoutError,
 } from '../src/errors.js';
 
@@ -61,6 +62,19 @@ describe('AfficAPIError.from', () => {
     expect(error.message).toBe('Affic API error (status 401): INTEGRATION_NOT_FOUND');
   });
 
+  it('maps 404 to AfficNotFoundError', () => {
+    const error = AfficAPIError.from(
+      404,
+      envelope(404, ['TRACK_NOT_FOUND'], 'Not Found'),
+      NO_HEADERS,
+    );
+
+    expect(error).toBeInstanceOf(AfficNotFoundError);
+    expect(error.status).toBe(404);
+    expect(error.codes).toEqual(['TRACK_NOT_FOUND']);
+    expect(error.message).toBe('Affic API error (status 404): TRACK_NOT_FOUND');
+  });
+
   it.each([500, 502, 503])('maps %i to AfficInternalServerError', (status) => {
     const error = AfficAPIError.from(status, '', NO_HEADERS);
 
@@ -73,6 +87,7 @@ describe('AfficAPIError.from', () => {
 
     expect(error).toBeInstanceOf(AfficAPIError);
     expect(error).not.toBeInstanceOf(AfficBadRequestError);
+    expect(error).not.toBeInstanceOf(AfficNotFoundError);
     expect(error).not.toBeInstanceOf(AfficInternalServerError);
     expect(error.message).toBe('Affic API error (status 429)');
   });

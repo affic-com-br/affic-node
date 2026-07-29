@@ -14,7 +14,7 @@ const client = new Affic({ apiKey: process.env['AFFIC_API_KEY'] });
 await client.activity.create({
   name: 'purchase',
   value: 149.9,
-  affiliateAccountId: '3f1c2a5e-9b47-4d1e-8a10-6c0f2d7b9e34',
+  trackId: 'V1StGXR8_Z5j',
 });
 ```
 
@@ -52,17 +52,30 @@ const sameClient = new Affic(); // reads AFFIC_API_KEY
 ## Reporting activities
 
 ```ts
-await client.activity.create({ name, value, affiliateAccountId });
+await client.activity.create({ name, value, trackId, data });
 ```
 
 The call resolves to `undefined` — the API answers `204` with no body, and the resulting commission
 shows up in the affiliate area.
 
-| Field                | Type             | Required | Notes                                                                         |
-| -------------------- | ---------------- | -------- | ----------------------------------------------------------------------------- |
-| `name`               | `string`         | yes      | Must match a configured metric name exactly, or no commission is computed.    |
-| `value`              | `number`         | no       | Decimal in the domain default currency (`149.9`) — not cents, not a string.   |
-| `affiliateAccountId` | `string \| null` | no       | Affiliate UUID to credit. `null` or omitted records an unattributed activity. |
+| Field     | Type             | Required | Notes                                                                                 |
+| --------- | ---------------- | -------- | ------------------------------------------------------------------------------------- |
+| `name`    | `string`         | yes      | Must match a configured metric name exactly, or no commission is computed.            |
+| `value`   | `number`         | no       | Decimal in the domain default currency (`149.9`) — not cents, not a string.           |
+| `trackId` | `string \| null` | no       | Affiliate to credit. `null` or omitted records an unattributed activity.              |
+| `data`    | `JsonObject`     | no       | Free-form context stored as-is. Never affects the commission. Max 4096 bytes of JSON. |
+
+### Where `trackId` comes from
+
+`trackId` is **not** a UUID and not an id you look up in the affiliate area. It is the opaque
+twelve-character value (`[A-Za-z0-9_-]{12}`) your storefront received in the `__affic` query
+parameter, which the Affic tag keeps in its attribution cookie. Read it from there and forward it
+verbatim.
+
+A `trackId` that is not twelve url-safe characters is rejected client-side with
+`AfficInvalidArgumentError`, before any request is sent. One that is well-formed but belongs to no
+active affiliate of your program comes back as `AfficNotFoundError` (`404`, `TRACK_NOT_FOUND`) —
+it is **not** silently recorded as unattributed. Send `null` when you genuinely have no affiliate.
 
 ### How the commission is computed
 
@@ -78,15 +91,16 @@ metric names.
 ### Common shapes
 
 ```ts
-// A sale credited to a known affiliate.
+// A sale credited to a known affiliate, with order context attached.
 await client.activity.create({
   name: 'purchase',
   value: 149.9,
-  affiliateAccountId: '3f1c2a5e-9b47-4d1e-8a10-6c0f2d7b9e34',
+  trackId: 'V1StGXR8_Z5j',
+  data: { orderId: 'A-10293', items: 3, campaign: 'summer-sale' },
 });
 
 // Recorded against the program only: no affiliate is credited, but it still counts for reporting.
-await client.activity.create({ name: 'purchase', value: 149.9, affiliateAccountId: null });
+await client.activity.create({ name: 'purchase', value: 149.9, trackId: null });
 
 // A non-monetary activity, for a FIXED metric such as a signup.
 await client.activity.create({ name: 'signup' });
@@ -150,16 +164,17 @@ await client.activity.create(
 
 Every error thrown by the SDK extends `AfficError`.
 
-| Class                       | Thrown when                                                           |
-| --------------------------- | --------------------------------------------------------------------- |
-| `AfficConfigurationError`   | No API key, an invalid `baseURL` or `timeout`, or a browser detected. |
-| `AfficInvalidArgumentError` | An empty `name` or a non-finite `value`. No request is sent.          |
-| `AfficBadRequestError`      | `400` — the API rejected the payload.                                 |
-| `AfficAuthenticationError`  | `401` — the key is missing or unknown (`INTEGRATION_NOT_FOUND`).      |
-| `AfficInternalServerError`  | `5xx` — nothing was recorded; safe to retry.                          |
-| `AfficAPIError`             | Any other non-2xx status. Base class of the three above.              |
-| `AfficTimeoutError`         | The configured timeout elapsed.                                       |
-| `AfficConnectionError`      | The request never reached the API, or you aborted it.                 |
+| Class                       | Thrown when                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `AfficConfigurationError`   | No API key, an invalid `baseURL` or `timeout`, or a browser detected.                                        |
+| `AfficInvalidArgumentError` | An empty `name`, a non-finite `value`, a malformed `trackId`, or `data` over 4096 bytes. No request is sent. |
+| `AfficBadRequestError`      | `400` — the API rejected the payload.                                                                        |
+| `AfficAuthenticationError`  | `401` — the key is missing or unknown (`INTEGRATION_NOT_FOUND`).                                             |
+| `AfficNotFoundError`        | `404` — the `trackId` matches no affiliate of your program (`TRACK_NOT_FOUND`). Nothing was recorded.        |
+| `AfficInternalServerError`  | `5xx` — nothing was recorded; safe to retry.                                                                 |
+| `AfficAPIError`             | Any other non-2xx status. Base class of the four above.                                                      |
+| `AfficTimeoutError`         | The configured timeout elapsed.                                                                              |
+| `AfficConnectionError`      | The request never reached the API, or you aborted it.                                                        |
 
 `AfficAPIError` carries the details of the response:
 

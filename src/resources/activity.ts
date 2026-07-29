@@ -5,6 +5,12 @@ import type { JsonObject, RequestOptions } from '../types.js';
 /** Path of the activity endpoint, relative to the client's `baseURL`. */
 const ACTIVITY_PATH = '/api/v1/integration-api/activity';
 
+/** Shape the API requires of a track id: exactly twelve url-safe characters. */
+const TRACK_ID_PATTERN = /^[A-Za-z0-9_-]{12}$/;
+
+/** Largest `data` payload the API accepts, measured on its serialized JSON. */
+const MAX_DATA_BYTES = 4096;
+
 /** Parameters for {@link Activity.create}. */
 export interface ActivityCreateParams {
   /**
@@ -26,13 +32,27 @@ export interface ActivityCreateParams {
   value?: number | undefined;
 
   /**
-   * Affiliate account credited for this activity, as the UUID shown in the affiliate area.
+   * Opaque identifier of the affiliate credited for this activity: exactly twelve url-safe
+   * characters (`[A-Za-z0-9_-]`).
+   *
+   * This is the value your storefront received in the `__affic` query parameter and that the tag
+   * keeps in its attribution cookie. Read it from there and forward it verbatim — it is not a UUID
+   * and carries no meaning you should parse.
    *
    * Pass `null` (or omit) when the activity cannot be attributed: it is still recorded against the
-   * program, but no affiliate is credited. An id matching no account behaves like `null` rather
-   * than failing.
+   * program, but no affiliate is credited. A well-formed id that belongs to no active affiliate of
+   * this program is **rejected** with {@link "../errors".AfficNotFoundError} — it is not silently
+   * treated as unattributed.
    */
-  affiliateAccountId?: string | null | undefined;
+  trackId?: string | null | undefined;
+
+  /**
+   * Free-form JSON stored alongside the activity: order id, cart contents, campaign, page URL.
+   *
+   * Recorded as-is and never part of the commission, which is driven solely by `value` and the
+   * matched metric. Must serialize to at most 4096 bytes of JSON.
+   */
+  data?: JsonObject | undefined;
 }
 
 /**
@@ -56,6 +76,9 @@ export class Activity {
    * - `PERCENTAGE` metric: the configured percentage of `value`; a missing `value` yields `0`.
    * - No matching metric: the activity is stored with no metric and no commission.
    *
+   * The affiliate is identified by `trackId`, the value the tag put in the attribution cookie.
+   * Anything you want stored but kept out of the commission goes in `data`.
+   *
    * **This call is not idempotent.** Every accepted call creates one activity, so retrying after a
    * network timeout can double-count. The SDK therefore never retries. Retry yourself only on
    * {@link "../errors".AfficInternalServerError}, where nothing was recorded, and reconcile in the
@@ -66,20 +89,27 @@ export class Activity {
    * @returns Nothing: the API answers `204` with no body. The resulting commission is visible in
    * the affiliate area.
    *
-   * @throws {AfficInvalidArgumentError} when `name` is empty or `value` is not a finite number.
+   * @throws {AfficInvalidArgumentError} when `name` is empty, `value` is not a finite number,
+   * `trackId` is not twelve url-safe characters, or `data` serializes past 4096 bytes.
    * @throws {import('../errors.js').AfficBadRequestError} when the API rejects the payload.
    * @throws {import('../errors.js').AfficAuthenticationError} when the API key is missing or unknown.
+   * @throws {import('../errors.js').AfficNotFoundError} when `trackId` matches no affiliate of this
+   * program; nothing was recorded.
    * @throws {import('../errors.js').AfficInternalServerError} on a server error; nothing was recorded.
    * @throws {import('../errors.js').AfficTimeoutError} when the request exceeds the timeout.
    *
    * @example
    * ```ts
-   * // A sale attributed to a known affiliate.
+   * // A sale attributed to a known affiliate, with order context attached.
    * await client.activity.create({
    *   name: 'purchase',
    *   value: 149.9,
-   *   affiliateAccountId: '3f1c2a5e-9b47-4d1e-8a10-6c0f2d7b9e34',
+   *   trackId: 'V1StGXR8_Z5j',
+   *   data: { orderId: 'A-10293', items: 3 },
    * });
+   *
+   * // Recorded against the program only: no affiliate is credited.
+   * await client.activity.create({ name: 'purchase', value: 149.9, trackId: null });
    *
    * // A non-monetary activity, for a FIXED metric such as a signup.
    * await client.activity.create({ name: 'signup' });
@@ -103,13 +133,34 @@ function toRequestBody(params: ActivityCreateParams): JsonObject {
     );
   }
 
+  // `null` is a legitimate trackId — it means "unattributed" — so only strings are shape-checked.
+  // Whether the id belongs to an affiliate is server-side knowledge, and comes back as a 404.
+  if (typeof params.trackId === 'string' && !TRACK_ID_PATTERN.test(params.trackId)) {
+    throw new AfficInvalidArgumentError(
+      `activity.create: \`trackId\` must be exactly twelve url-safe characters ([A-Za-z0-9_-]), ` +
+        `received ${JSON.stringify(params.trackId)}. Forward the \`__affic\` value from the ` +
+        `attribution cookie verbatim, or pass null to record an unattributed activity.`,
+    );
+  }
+
+  if (params.data !== undefined) {
+    // The API measures the limit in bytes, so multi-byte characters have to be counted as such.
+    const bytes = new TextEncoder().encode(JSON.stringify(params.data)).byteLength;
+
+    if (bytes > MAX_DATA_BYTES) {
+      throw new AfficInvalidArgumentError(
+        `activity.create: \`data\` must serialize to at most ${String(MAX_DATA_BYTES)} bytes of ` +
+          `JSON, received ${String(bytes)}.`,
+      );
+    }
+  }
+
   // Absent fields are omitted rather than sent as null: `value: null` and a missing `value` are
-  // not the same thing to the API, and an omitted `affiliateAccountId` must stay omitted.
+  // not the same thing to the API, and an omitted `trackId` must stay omitted.
   return {
     name: params.name,
     ...(params.value === undefined ? {} : { value: params.value }),
-    ...(params.affiliateAccountId === undefined
-      ? {}
-      : { affiliateAccountId: params.affiliateAccountId }),
+    ...(params.trackId === undefined ? {} : { trackId: params.trackId }),
+    ...(params.data === undefined ? {} : { data: params.data }),
   };
 }
