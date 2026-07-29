@@ -44,16 +44,17 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:coverage
 
+      # v1 is the latest stable release of this action; v2 exists only as a prerelease and its
+      # input names (`version-script`, `publish-script`) do not work here.
       - name: Create version PR or publish
         id: changesets
-        uses: changesets/action@v2
+        uses: changesets/action@v1
         with:
-          version-script: npm run version:packages
-          publish-script: npm run release
-          create-github-releases: true
-          push-git-tags: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          version: npm run version:packages
+          publish: npm run release
+          createGithubReleases: true
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Only needed while the package uses a granular access token instead of trusted
           # publishing. Harmless once trusted publishing is configured.
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
