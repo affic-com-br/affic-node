@@ -34,6 +34,20 @@ From the OpenAPI document:
 - The endpoint is **not idempotent**: every accepted call creates an activity.
 - Amounts are decimal numbers in the domain default currency, never cents and never strings.
 
+### Amendment, 2026-07-29 — attribution moved to `trackId`
+
+Re-read of `https://server.affic.com.br/api/docs/integration-api.json` after the API changed:
+
+- `affiliateAccountId` is gone. The affiliate is now identified by `trackId`, an opaque twelve
+  url-safe-character value (`^[A-Za-z0-9_-]{12}$`) that the storefront receives in the `__affic`
+  query parameter and the tag keeps in its attribution cookie. Forwarded verbatim; never parsed.
+- An unknown affiliate is no longer silently unattributed. A well-formed `trackId` matching no
+  active affiliate of the program is rejected with **`404 TRACK_NOT_FOUND`**, which the SDK maps to
+  the new `AfficNotFoundError`. Only `null`/omitted means "unattributed".
+- New optional `data`: free-form JSON stored as-is, never part of the commission, capped at 4096
+  bytes of serialized JSON. Typed as the existing `JsonObject`, and the cap is checked client-side
+  in bytes rather than characters.
+
 ## Decisions
 
 | Decision                     | Rationale                                                                                                                |

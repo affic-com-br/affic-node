@@ -6,7 +6,12 @@ import { AfficInvalidArgumentError } from '../src/errors.js';
 import { fetchStub, noContent } from './helpers/fetch-stub.js';
 
 const API_KEY = 'sk_test_123';
-const AFFILIATE_ID = '3f1c2a5e-9b47-4d1e-8a10-6c0f2d7b9e34';
+const TRACK_ID = 'V1StGXR8_Z5j';
+
+/** A `data` payload whose JSON is exactly `size` bytes: `{"note":"…"}` costs 11 bytes of syntax. */
+function dataOfJsonSize(size: number): { note: string } {
+  return { note: 'a'.repeat(size - 11) };
+}
 
 function clientWithStub(): { client: Affic; stub: ReturnType<typeof fetchStub> } {
   const stub = fetchStub(noContent());
@@ -32,36 +37,93 @@ describe('activity.create', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('sends an attributed purchase', async () => {
+  it('forwards the track id verbatim', async () => {
     const { client, stub } = clientWithStub();
 
     await client.activity.create({
       name: 'purchase',
       value: 149.9,
-      affiliateAccountId: AFFILIATE_ID,
+      trackId: TRACK_ID,
     });
 
     expect(stub.lastBody()).toEqual({
       name: 'purchase',
       value: 149.9,
-      affiliateAccountId: AFFILIATE_ID,
+      trackId: TRACK_ID,
     });
   });
 
-  it('sends an explicit null affiliate for unattributed activities', async () => {
+  it('sends an explicit null track id for unattributed activities', async () => {
     const { client, stub } = clientWithStub();
 
-    await client.activity.create({ name: 'purchase', value: 149.9, affiliateAccountId: null });
+    await client.activity.create({ name: 'purchase', value: 149.9, trackId: null });
 
-    expect(stub.lastBody()).toEqual({ name: 'purchase', value: 149.9, affiliateAccountId: null });
+    expect(stub.lastBody()).toEqual({ name: 'purchase', value: 149.9, trackId: null });
   });
 
   it('omits value entirely for non-monetary activities', async () => {
     const { client, stub } = clientWithStub();
 
-    await client.activity.create({ name: 'signup', affiliateAccountId: AFFILIATE_ID });
+    await client.activity.create({ name: 'signup', trackId: TRACK_ID });
 
-    expect(stub.lastBody()).toEqual({ name: 'signup', affiliateAccountId: AFFILIATE_ID });
+    expect(stub.lastBody()).toEqual({ name: 'signup', trackId: TRACK_ID });
+  });
+
+  it.each([
+    ['an empty track id', ''],
+    ['a track id of 11 characters', 'V1StGXR8_Z5'],
+    ['a track id of 13 characters', 'V1StGXR8_Z5jj'],
+    ['a track id with a character outside the url-safe alphabet', 'V1StGXR8_Z5!'],
+  ])('rejects %s before any request is made', async (_label, trackId) => {
+    const { client, stub } = clientWithStub();
+
+    await expect(client.activity.create({ name: 'purchase', trackId })).rejects.toThrow(
+      AfficInvalidArgumentError,
+    );
+    expect(stub.calls).toHaveLength(0);
+  });
+
+  it('sends data as a nested object', async () => {
+    const { client, stub } = clientWithStub();
+    const data = { orderId: 'A-10293', items: 3, campaign: 'summer-sale' };
+
+    await client.activity.create({ name: 'purchase', value: 149.9, trackId: TRACK_ID, data });
+
+    expect(stub.lastBody()).toEqual({
+      name: 'purchase',
+      value: 149.9,
+      trackId: TRACK_ID,
+      data,
+    });
+  });
+
+  it('accepts data serializing to exactly the 4096-byte limit', async () => {
+    const { client, stub } = clientWithStub();
+    const data = dataOfJsonSize(4096);
+
+    await client.activity.create({ name: 'purchase', data });
+
+    expect(stub.lastBody()).toEqual({ name: 'purchase', data });
+  });
+
+  it('rejects data serializing past the 4096-byte limit before any request is made', async () => {
+    const { client, stub } = clientWithStub();
+
+    await expect(
+      client.activity.create({ name: 'purchase', data: dataOfJsonSize(4097) }),
+    ).rejects.toThrow(AfficInvalidArgumentError);
+    expect(stub.calls).toHaveLength(0);
+  });
+
+  it('measures the data limit in bytes, not characters', async () => {
+    const { client, stub } = clientWithStub();
+
+    // 'é' is two UTF-8 bytes but one character, so a payload under the limit by character count
+    // can still exceed it on the wire.
+    await expect(
+      client.activity.create({ name: 'purchase', data: { note: 'é'.repeat(2100) } }),
+    ).rejects.toThrow(AfficInvalidArgumentError);
+    expect(stub.calls).toHaveLength(0);
   });
 
   it('keeps a zero value, which is meaningful for PERCENTAGE metrics', async () => {

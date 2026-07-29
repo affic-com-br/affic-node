@@ -7,6 +7,7 @@
  * ├─ AfficAPIError                the API answered with a non-2xx status
  * │  ├─ AfficBadRequestError      400 — the payload failed validation
  * │  ├─ AfficAuthenticationError  401 — missing or unknown x-api-key
+ * │  ├─ AfficNotFoundError        404 — the trackId matches no affiliate of this program
  * │  └─ AfficInternalServerError  5xx — safe to retry, nothing was recorded
  * └─ AfficConnectionError         the request never produced a response
  *    └─ AfficTimeoutError         the request exceeded the configured timeout
@@ -112,6 +113,9 @@ export class AfficAPIError extends AfficError {
     if (status === 401) {
       return new AfficAuthenticationError(message, init);
     }
+    if (status === 404) {
+      return new AfficNotFoundError(message, init);
+    }
     if (status >= 500) {
       return new AfficInternalServerError(message, init);
     }
@@ -120,8 +124,9 @@ export class AfficAPIError extends AfficError {
 }
 
 /**
- * `400` — the request body failed validation: wrong types, a malformed `affiliateAccountId`, or
- * unknown fields. Retrying the same payload will fail again.
+ * `400` — the request body failed validation: wrong types, a `trackId` that is not twelve url-safe
+ * characters, a `data` payload that is not an object or serializes past 4096 bytes, or unknown
+ * fields. Retrying the same payload will fail again.
  */
 export class AfficBadRequestError extends AfficAPIError {}
 
@@ -130,6 +135,17 @@ export class AfficBadRequestError extends AfficAPIError {}
  * (`INTEGRATION_NOT_FOUND`).
  */
 export class AfficAuthenticationError extends AfficAPIError {}
+
+/**
+ * `404` — the `trackId` matches no active affiliate of the program that owns the API key
+ * (`TRACK_NOT_FOUND`). A trackId belonging to another program is reported the same way as one that
+ * never existed.
+ *
+ * The activity was **not** recorded, and retrying the same payload will fail again. Either send a
+ * trackId your storefront actually received in the `__affic` parameter, or send `null` to record
+ * the activity against the program with no affiliate credited.
+ */
+export class AfficNotFoundError extends AfficAPIError {}
 
 /**
  * `5xx` — unexpected server error. The activity was **not** recorded, so the call is safe to

@@ -13,7 +13,8 @@ const client = new Affic(options);
 const params: ActivityCreateParams = {
   name: 'purchase',
   value: 149.9,
-  affiliateAccountId: '3f1c2a5e-9b47-4d1e-8a10-6c0f2d7b9e34',
+  trackId: 'V1StGXR8_Z5j',
+  data: { orderId: 'A-10293', items: 3 },
 };
 
 export async function report(): Promise<string> {

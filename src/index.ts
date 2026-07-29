@@ -14,7 +14,7 @@
  *   await client.activity.create({
  *     name: 'purchase',
  *     value: 149.9,
- *     affiliateAccountId: '3f1c2a5e-9b47-4d1e-8a10-6c0f2d7b9e34',
+ *     trackId: 'V1StGXR8_Z5j',
  *   });
  * } catch (error) {
  *   if (error instanceof AfficAuthenticationError) {
@@ -38,6 +38,7 @@ export {
   AfficError,
   AfficInternalServerError,
   AfficInvalidArgumentError,
+  AfficNotFoundError,
   AfficTimeoutError,
 } from './errors.js';
 export type { AfficAPIErrorInit } from './errors.js';

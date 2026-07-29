@@ -6,6 +6,7 @@ import {
   type ActivityCreateParams,
   type ClientOptions,
   type FetchLike,
+  type JsonObject,
   type RequestOptions,
 } from '../src/index.js';
 
@@ -21,11 +22,22 @@ describe('public types', () => {
     expectTypeOf({ name: 'signup' }).toExtend<ActivityCreateParams>();
   });
 
-  it('allows a nullable affiliate id and an optional numeric value', () => {
-    expectTypeOf<ActivityCreateParams['affiliateAccountId']>().toEqualTypeOf<
-      string | null | undefined
-    >();
+  it('allows a nullable track id and an optional numeric value', () => {
+    expectTypeOf<ActivityCreateParams['trackId']>().toEqualTypeOf<string | null | undefined>();
     expectTypeOf<ActivityCreateParams['value']>().toEqualTypeOf<number | undefined>();
+  });
+
+  it('no longer carries the affiliateAccountId the API replaced with trackId', () => {
+    expectTypeOf<ActivityCreateParams>().toHaveProperty('trackId');
+    expectTypeOf<ActivityCreateParams>().not.toHaveProperty('affiliateAccountId');
+  });
+
+  it('types the free-form data payload as JSON, never as any', () => {
+    expectTypeOf<ActivityCreateParams['data']>().toEqualTypeOf<JsonObject | undefined>();
+    expectTypeOf({
+      name: 'purchase',
+      data: { orderId: 'A-10293', items: 3, nested: { campaign: 'summer-sale' } },
+    }).toExtend<ActivityCreateParams>();
   });
 
   it('rejects unknown fields and wrong types', () => {
@@ -33,6 +45,8 @@ describe('public types', () => {
     expectTypeOf({ name: 'purchase', value: '149.9' }).toExtend<ActivityCreateParams>();
     // @ts-expect-error `name` is required.
     expectTypeOf({ value: 149.9 }).toExtend<ActivityCreateParams>();
+    // @ts-expect-error `data` holds JSON, so a function is not assignable.
+    expectTypeOf({ name: 'purchase', data: { cb: () => 1 } }).toExtend<ActivityCreateParams>();
   });
 
   it('accepts the global fetch as a FetchLike', () => {
