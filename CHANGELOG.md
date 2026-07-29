@@ -1,5 +1,11 @@
 # @affic/sdk
 
+## 0.1.1
+
+### Patch Changes
+
+- df3b7b9: Verify release pipeline
+
 ## 0.1.0
 
 Initial release.
