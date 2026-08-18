@@ -48,7 +48,7 @@ jobs:
       # input names (`version-script`, `publish-script`) do not work here.
       - name: Create version PR or publish
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
           version: npm run version:packages
           publish: npm run release
